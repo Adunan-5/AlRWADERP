@@ -1,0 +1,106 @@
+###############################################################
+# OS / Editor Files
+###############################################################
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.bak
+
+###############################################################
+# Composer
+###############################################################
+vendor/
+composer.lock
+
+###############################################################
+# Environment & Sensitive Config Files
+###############################################################
+.env
+.env*
+application/config/database.php
+application/config/config.php
+application/config/app-config.php
+application/config/migration.php
+application/config/email.php
+application/config/payments.php
+application/config/smtp.php
+application/config/*apikey*.php
+
+# If you have multiple config folders, ignore all custom ones:
+application/config/*.php
+
+# But allow these (they are harmless)
+!application/config/constants.php
+!application/config/routes.php
+
+###############################################################
+# Uploads / Media / User Files (Company Data)
+###############################################################
+uploads/
+media/
+temp/
+backup/
+backups/
+export/
+import/
+storage/
+files/
+documents/
+
+###############################################################
+# Logs / Cache / Sessions
+###############################################################
+application/logs/
+application/cache/
+application/sessions/
+application/temp/
+application/views/cache/
+*.log
+
+###############################################################
+# CodeIgniter auto-generated files
+###############################################################
+writable/
+system/cache/
+system/sessions/
+
+###############################################################
+# Perfex-specific modules data
+###############################################################
+modules/*/uploads/
+modules/*/logs/
+modules/*/temp/
+
+# If you want to commit module code:
+# Keep module PHP files but ignore all module-generated data
+modules/*/views/cache/
+modules/*/views/temp/
+
+###############################################################
+# Node / Gulp / Webpack (if present)
+###############################################################
+node_modules/
+package.json
+package-lock.json
+yarn.lock
+gulpfile.js
+webpack.config.js
+resources/node_modules/
+
+###############################################################
+# IDE/Tooling
+###############################################################
+*.iml
+*.pyc
+
+###############################################################
+# Misc
+###############################################################
+*.sql
+*.sqlite
+*.zip
+*.tar
+*.gz
+*.7z

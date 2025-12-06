@@ -1,0 +1,12 @@
+AddDefaultCharset utf-8
+<IfModule mod_rewrite.c>
+RewriteEngine on
+
+# Redirect base domain to /admin
+RewriteRule ^$ /admin [L,R=301]
+
+RewriteCond $1 !^(index\.php|resources|robots\.txt)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?/$1 [L,QSA]
+</IfModule>

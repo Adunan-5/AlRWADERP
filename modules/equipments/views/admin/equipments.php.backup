@@ -1,0 +1,259 @@
+<?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
+<?php init_head(); ?>
+
+<div id="wrapper">
+    <div class="content">
+        <div class="row">
+            <div class="col-md-12">
+                <?php echo form_open($this->uri->uri_string()); ?>
+				<div class="col-md-12">
+				<h4 class="tw-mt-0 tw-font-bold tw-text-lg tw-text-neutral-700">Basic Information</h4>
+</div>
+				<div class="col-md-6">
+                <div class="form-group">
+                    <label for="name"><?= _l('equipment_name') ?></label>
+                    <input type="text" class="form-control" name="name" id="name" value="<?= isset($equipment) ? $equipment->name : '' ?>" required>
+                </div>
+				</div>
+				<div class="col-md-6">
+                <div class="form-group">
+                    <label for="platenumber_code"><?= _l('equipment_platenumber_code') ?></label>
+                    <input type="text" class="form-control" name="platenumber_code" id="platenumber_code" value="<?= isset($equipment) ? $equipment->platenumber_code : '' ?>">
+                </div>
+				  </div>
+
+				<div class="col-md-6">
+					 <div class="form-group" app-field-wrapper="date">
+						<label for="date" class="control-label"> <small class="req text-danger">* </small><?= _l('equipment_available_from_date') ?></label>
+							<div class="input-group date">
+								<input type="text" id="available_from_date" name="available_from_date" class="form-control datepicker" value="<?= isset($equipment) ? $equipment->available_from_date: '' ?>" autocomplete="off" aria-invalid="false">
+								<div class="input-group-addon">
+									<i class="fa-regular fa-calendar calendar-icon"></i>
+								</div>
+							</div>
+					</div>
+				</div>
+
+				<div class="col-md-6">
+						<?php
+  $ownership_type = isset($equipment) ? $equipment->ownership_type : '';
+?>
+<div class="form-group contact-direction-option">
+  <label for="ownership_type"><?= _l('equipment_ownership_type') ?></label>
+  <select class="selectpicker"
+          data-none-selected-text="Select Ownership Type"
+          data-width="100%"
+          name="ownership_type"
+          id="ownership_type">
+    <option value="Own" <?= $ownership_type == 'Own' ? 'selected' : '' ?>>Own</option>
+    <option value="Supplier Rented" <?= $ownership_type == 'Supplier Rented' ? 'selected' : '' ?>>Supplier Rented</option>
+  </select>
+</div>
+
+				</div>
+
+                <!-- Supplier Dropdown (shows when Supplier Rented is selected) -->
+                <div class="col-md-6" id="supplier-field" <?php echo (isset($equipment) && $equipment->ownership_type == 'Own') || !isset($equipment) ? 'style="display:none;"' : ''; ?>>
+                    <?php
+                    $suppliers = $this->db->get(db_prefix() . 'suppliers')->result_array();
+                    $supplier_options = [];
+                    foreach ($suppliers as $supplier) {
+                        $supplier_options[] = [
+                            'value' => $supplier['id'],
+                            'label' => $supplier['name']
+                        ];
+                    }
+                    $selected_supplier = isset($equipment) && !empty($equipment->supplier_id) ? $equipment->supplier_id : '';
+                    echo render_select('supplier_id', $supplier_options, ['value', ['label']], 'supplier', $selected_supplier);
+                    ?>
+                </div>
+
+
+									<?php
+      //                                  $equipment_type = get_all_equipment_types(); 
+      //                                  $selected_equipment_type = (isset($member) ? explode(',', $member->equipment_type) : []);
+      //                                  echo render_select('equipmenttype[]', $equipment_type, ['id', 'name'], 'Equipment Type', $selected_equipment_type, ['multiple' => true]);
+                                    ?>
+					<div class="col-md-6">
+					
+
+							<?php
+$equipment_types = get_all_equipment_types();
+$selected_equipment_type = isset($equipment) && !empty($equipment->equipmenttype)
+  ? array_map('intval', explode(',', $equipment->equipmenttype))
+  : [];
+
+echo render_select(
+  'equipmenttype[]',
+  $equipment_types,
+  ['id', 'name'],
+  'Equipment Type',
+  $selected_equipment_type,
+  ['multiple' => true]
+);
+
+?>
+
+					</div>
+
+
+
+<div class="col-md-12">
+				<h4 class="tw-mt-0 tw-font-bold tw-text-lg tw-text-neutral-700">Contact Information</h4>
+</div>
+
+<div class="col-md-6">
+										<?php $countries = get_all_countries();
+                                        $customer_default_country                = get_option('customer_default_country');
+                                        $selected                                = (isset($member) ? $member->country : $customer_default_country);
+                                        echo render_select('country', $countries, ['country_id', ['short_name']], 'staff_nationality', $selected, ['data-none-selected-text' => _l('dropdown_non_selected_tex')]);
+                                    ?>
+</div>
+
+
+
+
+				<div class="col-md-6">
+    <div class="form-group">
+        <label for="address"><?= _l('equipment_address') ?></label>
+        <textarea class="form-control" name="address" id="address"><?= isset($equipment) ? $equipment->address : '' ?></textarea>
+    </div>
+</div>
+
+				
+				<div class="col-md-6">
+				<div class="form-group">
+                    <label for="phone"><?= _l('equipment_phone') ?></label>
+                    <input type="text" class="form-control" name="phone" id="phone" value="<?= isset($equipment) ? $equipment->phone : '' ?>">
+                </div>
+				</div>
+				
+				<div class="col-md-6">
+				<div class="form-group">
+                    <label for="email"><?= _l('equipment_email') ?></label>
+                    <input type="email" class="form-control" name="email" id="email" value="<?= isset($equipment) ? $equipment->email : '' ?>">
+                </div>
+				</div>
+
+
+<div class="col-md-12">
+				<h4 class="tw-mt-0 tw-font-bold tw-text-lg tw-text-neutral-700">Documents Details</h4>
+</div>
+
+
+ <div class="col-md-6">
+					 <div class="form-group" app-field-wrapper="date">
+						<label for="date" class="control-label"> <small class="req text-danger">* </small><?= _l('equipment_istimara_expires_on') ?></label>
+							<div class="input-group date">
+								<input type="text" id="istimara_expires_on" name="istimara_expires_on" class="form-control datepicker" value="<?= isset($equipment) ? $equipment->istimara_expires_on: '' ?>" autocomplete="off" aria-invalid="false">
+								<div class="input-group-addon">
+									<i class="fa-regular fa-calendar calendar-icon"></i>
+								</div>
+							</div>
+					</div>
+				</div>
+
+
+				 <div class="col-md-6">
+					 <div class="form-group" app-field-wrapper="date">
+						<label for="date" class="control-label"> <small class="req text-danger">* </small><?= _l('equipment_hijri_date') ?></label>
+							<div class="input-group date">
+								<input type="text" id="hijri_date" name="hijri_date" class="form-control datepicker" value="<?= isset($equipment) ? $equipment->hijri_date: '' ?>" autocomplete="off" aria-invalid="false">
+								<div class="input-group-addon">
+									<i class="fa-regular fa-calendar calendar-icon"></i>
+								</div>
+							</div>
+					</div>
+				</div>
+				
+
+
+
+
+
+<?php $documents_available = isset($equipment) ? $equipment->documents_available : ''; ?>
+<div class="col-md-6">
+  <div class="form-group">
+    <label for="documents_available"><?= _l('equipment_documents_available') ?></label>
+    <select class="selectpicker"
+            data-none-selected-text="System Default"
+            data-width="100%"
+            name="documents_available"
+            id="documents_available">
+      <option value="" <?= $documents_available == '' ? 'selected' : '' ?>></option>
+      <option value="Yes" <?= $documents_available == 'Yes' ? 'selected' : '' ?>>Yes</option>
+      <option value="No" <?= $documents_available == 'No' ? 'selected' : '' ?>>No</option>
+    </select>
+  </div>
+</div>
+
+
+
+
+
+
+				
+				<div class="col-md-6">
+				<div class="form-group">
+                    <label for="insurance_number"><?= _l('equipment_insurance_number') ?></label>
+                    <input type="text" class="form-control" name="insurance_number" id="insurance_number" value="<?= isset($equipment) ? $equipment->insurance_number : '' ?>">
+                </div>
+				</div>
+				
+
+				 <div class="col-md-6">
+					 <div class="form-group" app-field-wrapper="date">
+						<label for="date" class="control-label"> <small class="req text-danger">* </small><?= _l('equipment_insurance_expires_on') ?></label>
+							<div class="input-group date">
+								<input type="text" id="insurance_expires_on" name="insurance_expires_on" class="form-control datepicker" value="<?= isset($equipment) ? $equipment->insurance_expires_on: '' ?>" autocomplete="off" aria-invalid="false">
+								<div class="input-group-addon">
+									<i class="fa-regular fa-calendar calendar-icon"></i>
+								</div>
+							</div>
+					</div>
+				</div>
+
+				
+				<div class="col-md-6">
+					 <div class="form-group" app-field-wrapper="date">
+						<label for="date" class="control-label"> <small class="req text-danger">* </small><?= _l('equipment_insurance_hijri_date') ?></label>
+							<div class="input-group date">
+								<input type="text" id="insurance_hijri_date" name="insurance_hijri_date" class="form-control datepicker" value="<?= isset($equipment) ? $equipment->insurance_hijri_date: '' ?>" autocomplete="off" aria-invalid="false">
+								<div class="input-group-addon">
+									<i class="fa-regular fa-calendar calendar-icon"></i>
+								</div>
+							</div>
+					</div>
+				</div>
+				 
+			
+				 
+				<div class="col-md-12 text-right">
+                <a href="<?php echo admin_url('equipments'); ?>" class="btn btn-default"><?php echo _l('cancel'); ?></a>
+                <button type="submit" class="btn btn-primary"><?= isset($equipment) ? _l('update_equipment') : _l('submit') ?></button>
+				</div>
+                <?php echo form_close(); ?>
+           </div>
+        </div>
+    </div>
+</div>
+<?php init_tail(); ?>
+<script>
+$(function(){
+    'use strict';
+
+    // Show/hide supplier field based on ownership type
+    $('#ownership_type').on('change', function() {
+        if ($(this).val() == 'Supplier Rented') {
+            $('#supplier-field').slideDown();
+            $('#supplier-field select').prop('required', true);
+        } else {
+            $('#supplier-field').slideUp();
+            $('#supplier-field select').prop('required', false).val('');
+        }
+    });
+
+    // Trigger on page load
+    $('#ownership_type').trigger('change');
+});
+</script>
