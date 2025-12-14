@@ -60,7 +60,9 @@
         buttonDL.className = 'btn btn-sm btn-primary';
         buttonDL.innerHTML = '<i class="fa fa-download"></i>';
 
-        var rowData = instance.getSourceDataAtRow(row);
+        // Get the physical row index (after sorting/filtering) to access the correct data
+        var physicalRow = instance.toPhysicalRow(row);
+        var rowData = instance.getSourceDataAtRow(physicalRow);
 
         buttonPreview.addEventListener('click', function() {
           var staff = rowData.staff_id;

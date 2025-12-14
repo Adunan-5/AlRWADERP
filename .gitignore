@@ -104,3 +104,15 @@ resources/node_modules/
 *.tar
 *.gz
 *.7z
+
+# Custom local/debug scripts (not for production repo)
+check_employee_data.php
+check_hrp_table.php
+check_table_names.php
+claude.md
+info.php
+run_hr_payroll_migration.php
+run_migration_direct.php
+test_payroll_generation.php
+TIMESHEET_ADJUSTMENTS_FEATURE.md
+view_payroll_logs.php

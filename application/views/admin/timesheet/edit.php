@@ -257,6 +257,7 @@ $(document).ready(function() {
     var month = '<?= $month ?>';
     var hotInstances = {};
     var currentDates = [];
+    var holidayDates = [];
 
     function loadData() {
         $.get(admin_url + 'timesheet/project_grid_data/' + projectId, { month: month }, function (res) {
@@ -265,6 +266,7 @@ $(document).ready(function() {
                 return;
             }
             currentDates = res.dates;
+            holidayDates = res.holiday_dates || [];
             renderAllAssigneeGrids(res.assignees, month);
         }, 'json');
     }
@@ -285,7 +287,9 @@ $(document).ready(function() {
             var formattedMonth = dtMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
             var heading = document.createElement('h5');
-            heading.innerHTML = `<span class="label-strong">${a.full_name}</span> — <span class="label-strong">${formattedMonth}</span>`;
+            var iqamaInfo = a.iqama_number ? ` (${a.iqama_number})` : '';
+            var hoursInfo = a.work_hours_per_day ? ` - ${a.work_hours_per_day} hrs/day` : ' - <span style="color: #e74c3c;">work hours per day is missing</span>';
+            heading.innerHTML = `<span class="label-strong">${a.full_name}${iqamaInfo}${hoursInfo}</span> — <span class="label-strong">${formattedMonth}</span>`;
             wrapper.appendChild(heading);
 
             var gridDiv = document.createElement('div');
@@ -332,15 +336,50 @@ $(document).ready(function() {
                     autoInsertRow: false
                 },
                 afterChange: function(changes, source) {
-                    if (source === 'loadData') return;
+                    if (source === 'loadData' || source === 'updateTotal' || source === 'autoOverflow') return;
                     if (!changes) return;
-                    changes.forEach(function([row, col]) {
+
+                    var maxRegularHours = parseFloat(a.work_hours_per_day) || 0;
+
+                    changes.forEach(function([row, col, oldVal, newVal]) {
                         if (col < currentDates.length) {
-                            var sum = 0;
-                            for (var c=0; c<currentDates.length; c++) {
-                                sum += parseFloat(hot.getDataAtCell(row,c)) || 0;
+                            // Only apply overflow logic to Regular row (row 0)
+                            if (row === 0) {
+                                var enteredHours = parseFloat(newVal) || 0;
+
+                                // Check if the date is a Friday or holiday
+                                var dateString = currentDates[col];
+                                var currentDate = new Date(dateString + 'T00:00:00');
+                                var isFriday = currentDate.getDay() === 5; // Friday = 5
+                                var isHoliday = holidayDates.indexOf(dateString) !== -1;
+
+                                // If Friday or holiday, move all hours to overtime
+                                if ((isFriday || isHoliday) && enteredHours > 0) {
+                                    // Set regular to 0
+                                    hot.setDataAtCell(0, col, 0, 'autoOverflow');
+
+                                    // Set overtime to all entered hours
+                                    hot.setDataAtCell(1, col, enteredHours, 'autoOverflow');
+                                } else if (maxRegularHours > 0 && enteredHours > maxRegularHours) {
+                                    // Normal overflow logic for non-Friday/non-holiday
+                                    var overflow = enteredHours - maxRegularHours;
+
+                                    // Update regular hours to max
+                                    hot.setDataAtCell(0, col, maxRegularHours, 'autoOverflow');
+
+                                    // Set overtime to overflow amount (not add to existing)
+                                    hot.setDataAtCell(1, col, overflow, 'autoOverflow');
+                                }
                             }
-                            hot.setDataAtCell(row, currentDates.length, sum, 'updateTotal');
+
+                            // Recalculate totals for both rows
+                            for (var r = 0; r < 2; r++) {
+                                var sum = 0;
+                                for (var c=0; c<currentDates.length; c++) {
+                                    sum += parseFloat(hot.getDataAtCell(r,c)) || 0;
+                                }
+                                hot.setDataAtCell(r, currentDates.length, sum, 'updateTotal');
+                            }
                         }
                     });
                 }

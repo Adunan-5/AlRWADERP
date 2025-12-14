@@ -9186,7 +9186,7 @@ class hr_payroll extends AdminController {
 			$actions = '';
 			$actions .= '<a href="' . admin_url('hr_payroll/manage_employees?payroll_id=' . $payroll['id']) . '" class="btn btn-sm btn-default" title="' . _l('view') . '"><i class="fa fa-eye"></i></a> ';
 
-			if ($payroll['status'] == 'draft' && (has_permission('hrp_employee', '', 'delete') || is_admin())) {
+			if (($payroll['status'] == 'draft' || $payroll['status'] == 'cancelled') && (has_permission('hrp_employee', '', 'delete') || is_admin())) {
 				$actions .= '<a href="#" onclick="delete_payroll(' . $payroll['id'] . '); return false;" class="btn btn-sm btn-danger" title="' . _l('delete') . '"><i class="fa fa-trash"></i></a>';
 			}
 

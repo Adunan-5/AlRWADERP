@@ -5,9 +5,10 @@ class Staff_timesheet_model extends App_Model
 {
     public function get_grids_by_staff($staff_id)
     {
-        $this->db->select('tm.id as timesheet_id, tm.project_id, p.name as project_name, tm.month_year');
+        $this->db->select('tm.id as timesheet_id, tm.project_id, p.name as project_name, tm.month_year, s.iqama_number, s.work_hours_per_day, CONCAT(s.firstname, " ", s.lastname) as staff_name');
         $this->db->from(db_prefix() . 'timesheet_master tm');
         $this->db->join(db_prefix() . 'projects p', 'p.id = tm.project_id', 'left');
+        $this->db->join(db_prefix() . 'staff s', 's.staffid = tm.staff_id', 'left');
         $this->db->where('tm.staff_id', $staff_id);
         $this->db->order_by('tm.month_year', 'DESC');
         return $this->db->get()->result_array();

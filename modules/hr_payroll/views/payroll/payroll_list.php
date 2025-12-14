@@ -188,6 +188,11 @@ $(function() {
         month_from: '[name="filter_month_from"]'
     });
 
+    // Reload table when filters change
+    $('[name="filter_status"], [name="filter_company"], [name="filter_employee_type"], [name="filter_month_from"]').on('change', function() {
+        $('.table-payroll-list').DataTable().ajax.reload();
+    });
+
     // Generate Payroll Form Submission
     $('#generatePayrollForm').on('submit', function(e) {
         e.preventDefault();

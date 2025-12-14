@@ -296,6 +296,16 @@
 var quotation_id = <?php echo $quotation->id; ?>;
 var currency = '<?php echo $quotation->currency; ?>';
 
+// CSRF token – this is the magic line that kills 419 forever
+var csrf_token_name = '<?php echo $this->security->get_csrf_token_name(); ?>';
+var csrf_hash       = '<?php echo $this->security->get_csrf_hash(); ?>';
+// Helper to always include CSRF in any $.post
+function getCsrfData() {
+    return {
+        [csrf_token_name]: csrf_hash
+    };
+}
+
 $(function() {
     'use strict';
 
@@ -332,18 +342,26 @@ $(function() {
         $('input[name="item_type"][value="equipment"]').prop('checked', true).trigger('change');
     });
 
-    // Save item
-    $('#save-item-btn').on('click', function() {
+    // Save item (Add or Update)
+    $('#save-item-btn').on('click', function(e) {
+        e.preventDefault();
         var formData = $('#quotation-item-form').serialize();
-        var itemId = $('#item_id').val();
-        var url = itemId ? admin_url + 'equipments/quotation/update_item/' + itemId : admin_url + 'equipments/quotation/add_item';
+        var itemId   = $('#item_id').val();
+        var url      = itemId 
+            ? admin_url + 'equipments/quotation/update_item/' + itemId 
+            : admin_url + 'equipments/quotation/add_item';
+
+        // Add CSRF token
+        formData += '&' + csrf_token_name + '=' + csrf_hash;
 
         $.post(url, formData, function(response) {
             if (response.success) {
                 alert_float('success', response.message);
+                // Disable unsaved changes warning
+                $(window).off("beforeunload");
                 $('#quotation-item-modal').modal('hide');
                 loadQuotationItems();
-                location.reload(); // Reload to update totals
+                location.reload();
             } else {
                 alert_float('danger', response.message);
             }
@@ -352,12 +370,10 @@ $(function() {
 
     // Recalculate totals
     $('#recalculate-totals-btn').on('click', function() {
-        $.post(admin_url + 'equipments/quotation/recalculate_totals/' + quotation_id, function(response) {
+        $.post(admin_url + 'equipments/quotation/recalculate_totals/' + quotation_id, getCsrfData(), function(response) {
             if (response.success) {
                 alert_float('success', response.message);
                 location.reload();
-            } else {
-                alert_float('danger', response.message);
             }
         }, 'json');
     });
@@ -365,14 +381,10 @@ $(function() {
     // Accept quotation
     $('#accept-quotation-btn').on('click', function() {
         if (confirm('<?php echo _l('confirm_accept_quotation'); ?>')) {
-            $.post(admin_url + 'equipments/quotation/accept/' + quotation_id, function(response) {
+            $.post(admin_url + 'equipments/quotation/accept/' + quotation_id, getCsrfData(), function(response) {
                 if (response.success) {
                     alert_float('success', response.message);
-                    setTimeout(function() {
-                        location.reload();
-                    }, 1000);
-                } else {
-                    alert_float('danger', response.message);
+                    setTimeout(() => location.reload(), 1000);
                 }
             }, 'json');
         }
@@ -401,52 +413,51 @@ function renderQuotationItems(items) {
     $.each(items, function(index, item) {
         var itemTypeLabel = '';
         switch (item.item_type) {
-            case 'equipment':
-                itemTypeLabel = '<?php echo _l('equipment_only'); ?>';
-                break;
-            case 'operator':
-                itemTypeLabel = '<?php echo _l('operator_only'); ?>';
-                break;
-            case 'equipment_with_operator':
-                itemTypeLabel = '<?php echo _l('equipment_with_operator'); ?>';
-                break;
+            case 'equipment':               itemTypeLabel = '<?php echo _l('equipment_only'); ?>'; break;
+            case 'operator':                itemTypeLabel = '<?php echo _l('operator_only'); ?>'; break;
+            case 'equipment_with_operator': itemTypeLabel = '<?php echo _l('equipment_with_operator'); ?>'; break;
         }
 
-        var row = '<tr>' +
-            '<td>' + itemTypeLabel + '</td>' +
-            '<td>' + (item.equipment_description || '-') + '</td>' +
-            '<td>' + (item.operator_description || '-') + '</td>' +
-            '<td class="text-right">' + item.quantity + '</td>' +
-            '<td>' + item.unit + '</td>' +
-            '<td class="text-right">' + formatMoney(item.unit_rate, currency) + '</td>' +
-            '<td class="text-right tw-font-semibold">' + formatMoney(item.line_total, currency) + '</td>' +
-            '<td class="text-center">' +
-            '<?php if (has_permission('equipment_quotation', '', 'edit')) { ?>' +
-            '<a href="#" class="btn btn-default btn-sm edit-item" data-id="' + item.id + '" data-item=\'' + JSON.stringify(item) + '\'><i class="fa fa-edit"></i></a> ' +
-            '<?php } ?>' +
-            '<?php if (has_permission('equipment_quotation', '', 'delete')) { ?>' +
-            '<a href="#" class="btn btn-danger btn-sm delete-item" data-id="' + item.id + '"><i class="fa fa-remove"></i></a>' +
-            '<?php } ?>' +
-            '</td>' +
-            '</tr>';
+        var row = `<tr>
+            <td>${itemTypeLabel}</td>
+            <td>${item.equipment_description || '-'}</td>
+            <td>${item.operator_description || '-'}</td>
+            <td class="text-right">${item.quantity}</td>
+            <td>${item.unit}</td>
+            <td class="text-right">${formatMoney(item.unit_rate, currency)}</td>
+            <td class="text-right tw-font-semibold">${formatMoney(item.line_total, currency)}</td>
+            <td class="text-center">
+                <?php if (has_permission('equipment_quotation', '', 'edit')) { ?>
+                    <a href="#" class="btn btn-default btn-icon edit-item" data-item='${JSON.stringify(item)}'>
+                        <i class="fa fa-edit"></i>
+                    </a>
+                <?php } ?>
+                <?php if (has_permission('equipment_quotation', '', 'delete')) { ?>
+                    <a href="#" class="btn btn-danger btn-icon delete-item" data-id="${item.id}">
+                        <i class="fa fa-remove"></i>
+                    </a>
+                <?php } ?>
+            </td>
+        </tr>`;
 
         tbody.append(row);
     });
 
-    // Edit item handler
-    $('.edit-item').on('click', function(e) {
+    // Edit button
+    tbody.off('click', '.edit-item').on('click', '.edit-item', function(e) {
         e.preventDefault();
         var item = $(this).data('item');
         populateItemForm(item);
         $('#quotation-item-modal').modal('show');
     });
 
-    // Delete item handler
-    $('.delete-item').on('click', function(e) {
+    // Delete button
+    tbody.off('click', '.delete-item').on('click', '.delete-item', function(e) {
         e.preventDefault();
         var itemId = $(this).data('id');
+
         if (confirm('<?php echo _l('confirm_delete'); ?>')) {
-            $.post(admin_url + 'equipments/quotation/delete_item/' + itemId, function(response) {
+            $.post(admin_url + 'equipments/quotation/delete_item/' + itemId, getCsrfData(), function(response) {
                 if (response.success) {
                     alert_float('success', response.message);
                     loadQuotationItems();
@@ -459,24 +470,25 @@ function renderQuotationItems(items) {
     });
 }
 
-// Populate form for editing
+// Populate form when editing
 function populateItemForm(item) {
     $('#item_id').val(item.id);
     $('.modal-title').text('<?php echo _l('edit_quotation_item'); ?>');
     $('input[name="item_type"][value="' + item.item_type + '"]').prop('checked', true).trigger('change');
-    $('textarea[name="equipment_description"]').val(item.equipment_description);
-    $('textarea[name="operator_description"]').val(item.operator_description);
+
+    $('#equipment_description').val(item.equipment_description || '');
+    $('#operator_description').val(item.operator_description || '');
     $('input[name="quantity"]').val(item.quantity);
     $('input[name="unit"]').val(item.unit);
     $('input[name="unit_rate"]').val(item.unit_rate);
-    $('input[name="standard_hours_per_day"]').val(item.standard_hours_per_day);
-    $('input[name="days_per_month"]').val(item.days_per_month);
-    $('input[name="duration_months"]').val(item.duration_months);
-    $('textarea[name="notes"]').val(item.notes);
+    $('input[name="standard_hours_per_day"]').val(item.standard_hours_per_day || '');
+    $('input[name="days_per_month"]').val(item.days_per_month || '');
+    $('input[name="duration_months"]').val(item.duration_months || '');
+    $('textarea[name="notes"]').val(item.notes || '');
 }
 
-// Format money helper
+// Format money
 function formatMoney(amount, curr) {
-    return curr + ' ' + parseFloat(amount).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+    return curr + ' ' + parseFloat(amount || 0).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
 }
 </script>

@@ -2639,6 +2639,14 @@ $(function() {
 <script>
 $(function() {
     const staffId = "<?php echo $member->staffid; ?>";
+    let holidayDates = [];
+
+    // Load holiday dates first
+    $.getJSON(admin_url + 'staff_timesheet/get_holidays', function(response) {
+        if (response.success) {
+            holidayDates = response.dates || [];
+        }
+    });
 
     function loadStaffTimesheets() {
         $.getJSON(admin_url + 'staff_timesheet/get_grids/' + staffId, function(grids) {
@@ -2652,8 +2660,11 @@ $(function() {
 
             grids.forEach(grid => {
                 const gridId = 'grid_' + grid.timesheet_id;
+                const staffInfo = grid.staff_name ?
+                    `${grid.staff_name} (${grid.iqama_number || 'N/A'}) - ${grid.work_hours_per_day ? grid.work_hours_per_day + ' hrs/day' : '<span style="color: #e74c3c;">work hours per day is missing</span>'}` :
+                    'Unknown Staff';
                 const gridTitle = `
-                    ${grid.project_name ? grid.project_name : 'No Project'} 
+                    ${staffInfo} - ${grid.project_name ? grid.project_name : 'No Project'}
                     <small class="text-muted">(${moment(grid.month_year).format('MMMM YYYY')})</small>
                 `;
 
@@ -2688,14 +2699,13 @@ $(function() {
                     regularRow.push(0);
                     overtimeRow.push(0);
 
-                    // Prepare column headers
+                    // Prepare column headers with date on first line and weekday on second line
                     const colHeaders = dates.map(d => {
                         const dt = new Date(d + 'T00:00:00');
                         const dayNum = dt.getDate();
                         const weekday = dt.toLocaleDateString('en-US', { weekday: 'short' });
                         const monthName = dt.toLocaleDateString('en-US', { month: 'short' });
-                        const suffix = (dayNum===1)?'st':(dayNum===2)?'nd':(dayNum===3)?'rd':'th';
-                        return `${dayNum}${suffix} ${monthName} (${weekday})`;
+                        return `${monthName} ${dayNum}<br/>${weekday}`;
                     });
                     colHeaders.push('Total');
 
@@ -2710,14 +2720,49 @@ $(function() {
                         columns: dates.map(() => ({ type: 'numeric' })).concat({ type: 'numeric', readOnly: true }),
                         height: 120,
                         afterChange: function(changes, source) {
-                            if (!changes || source === 'loadData') return;
-                            changes.forEach(([row, col]) => {
+                            if (!changes || source === 'loadData' || source === 'updateTotal' || source === 'autoOverflow') return;
+
+                            const maxRegularHours = parseFloat(grid.work_hours_per_day) || 0;
+
+                            changes.forEach(([row, col, oldVal, newVal]) => {
                                 if (col < dates.length) {
-                                    let sum = 0;
-                                    for (let c = 0; c < dates.length; c++) {
-                                        sum += parseFloat(hot.getDataAtCell(row,c)) || 0;
+                                    // Only apply overflow logic to Regular row (row 0)
+                                    if (row === 0) {
+                                        const enteredHours = parseFloat(newVal) || 0;
+
+                                        // Check if the date is a Friday or holiday
+                                        const dateString = dates[col];
+                                        const currentDate = new Date(dateString + 'T00:00:00');
+                                        const isFriday = currentDate.getDay() === 5; // Friday = 5
+                                        const isHoliday = holidayDates.indexOf(dateString) !== -1;
+
+                                        // If Friday or holiday, move all hours to overtime
+                                        if ((isFriday || isHoliday) && enteredHours > 0) {
+                                            // Set regular to 0
+                                            hot.setDataAtCell(0, col, 0, 'autoOverflow');
+
+                                            // Set overtime to all entered hours
+                                            hot.setDataAtCell(1, col, enteredHours, 'autoOverflow');
+                                        } else if (maxRegularHours > 0 && enteredHours > maxRegularHours) {
+                                            // Normal overflow logic for non-Friday/non-holiday
+                                            const overflow = enteredHours - maxRegularHours;
+
+                                            // Update regular hours to max
+                                            hot.setDataAtCell(0, col, maxRegularHours, 'autoOverflow');
+
+                                            // Set overtime to overflow amount (not add to existing)
+                                            hot.setDataAtCell(1, col, overflow, 'autoOverflow');
+                                        }
                                     }
-                                    hot.setDataAtCell(row, dates.length, sum, 'updateTotal');
+
+                                    // Recalculate totals for both rows
+                                    for (let r = 0; r < 2; r++) {
+                                        let sum = 0;
+                                        for (let c = 0; c < dates.length; c++) {
+                                            sum += parseFloat(hot.getDataAtCell(r, c)) || 0;
+                                        }
+                                        hot.setDataAtCell(r, dates.length, sum, 'updateTotal');
+                                    }
                                 }
                             });
                         }
@@ -2759,8 +2804,20 @@ $(function() {
         });
     }
 
-    // Initialize load
-    loadStaffTimesheets();
+    // Load timesheets when tab is shown (Bootstrap tab event)
+    var timesheetsLoaded = false;
+    $('a[href="#staff_timesheets"]').on('shown.bs.tab', function (e) {
+        if (!timesheetsLoaded) {
+            loadStaffTimesheets();
+            timesheetsLoaded = true;
+        }
+    });
+
+    // Also load if tab is active on page load
+    if ($('#staff_timesheets').hasClass('active')) {
+        loadStaffTimesheets();
+        timesheetsLoaded = true;
+    }
 });
 </script>
     </html>

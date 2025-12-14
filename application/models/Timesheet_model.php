@@ -83,7 +83,7 @@ class Timesheet_model extends App_Model
     // Returns all assignees for a project (projectassignee table)
     public function get_assignees_by_project($project_id)
     {
-        $this->db->select('pa.*, s.staffid, s.firstname, s.lastname, s.name as full_name, s.iqama_number, s.email, s.phonenumber');
+        $this->db->select('pa.*, s.staffid, s.firstname, s.lastname, s.name as full_name, s.iqama_number, s.work_hours_per_day, s.email, s.phonenumber');
         $this->db->from(db_prefix() . 'projectassignee pa');
         $this->db->join(db_prefix() . 'staff s', 's.staffid = pa.staff_id', 'left');
         $this->db->where('pa.project_id', (int)$project_id);

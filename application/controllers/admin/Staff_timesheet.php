@@ -23,6 +23,14 @@ class Staff_timesheet extends AdminController
         echo json_encode($details);
     }
 
+    // Get holiday dates
+    public function get_holidays()
+    {
+        $this->load->model('holidays_model');
+        $dates = $this->holidays_model->get_holiday_dates();
+        echo json_encode(['success' => true, 'dates' => $dates]);
+    }
+
     // Save edited grid
     public function save_timesheet()
     {

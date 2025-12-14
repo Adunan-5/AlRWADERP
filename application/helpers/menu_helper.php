@@ -392,6 +392,13 @@ function app_init_admin_sidebar_menu_items()
             'href'     => admin_url('allowance_types'),
             'position' => 51,
         ]);
+
+        $CI->app_menu->add_sidebar_children_item('staff', [
+            'slug'     => 'holidays-menu',
+            'name'     => _l('holidays'),
+            'href'     => admin_url('holidays'),
+            'position' => 60,
+        ]);
     }
 
     // Setup menu

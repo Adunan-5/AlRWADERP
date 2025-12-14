@@ -155,7 +155,6 @@ $has_permission_delete = staff_can('delete', 'staff');
 $custom_fields = get_custom_fields('staff', ['show_on_table' => 1]);
 
 $aColumns = [
-    'CAST(' . db_prefix() . 'staff.code AS UNSIGNED) as staff_code_order', // for sorting
     db_prefix() . 'staff.code as staff_code', // Code
     'ct.name as company_name',       // Company (joined below)
     db_prefix() . 'staff.name as staff_name', // Name
@@ -236,15 +235,11 @@ foreach ($rResult as $aRow) {
         }
 
         switch ($col) {
-            case 'CAST(' . db_prefix() . 'staff.code AS UNSIGNED) as staff_code_order':
-                // skip output (only used for sorting)
-                continue 2;
-
             case db_prefix() . 'staff.code as staff_code': // Code
                 $_data = e($_data);
                 break;
 
-            case 'companytype.name as company_name': // Company
+            case 'ct.name as company_name': // Company
                 $_data = e($_data);
                 break;
 

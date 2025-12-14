@@ -8546,10 +8546,11 @@ order by staff_id, header_oder
 	 */
 	public function create_payroll($data)
 	{
-		// Check if payroll already exists
+		// Check if payroll already exists (exclude cancelled payrolls)
 		$this->db->where('month', $data['month']);
 		$this->db->where('company_filter', $data['company_filter']);
 		$this->db->where('ownemployee_type_id', $data['ownemployee_type_id']);
+		$this->db->where('status !=', 'cancelled');
 		$existing = $this->db->get(db_prefix() . 'hrp_payroll')->row();
 
 		if ($existing) {
@@ -8787,9 +8788,9 @@ order by staff_id, header_oder
 	 */
 	public function delete_payroll($payroll_id)
 	{
-		// Check if payroll is draft
+		// Check if payroll is draft or cancelled
 		$payroll = $this->get_payroll($payroll_id);
-		if (!$payroll || $payroll->status != 'draft') {
+		if (!$payroll || ($payroll->status != 'draft' && $payroll->status != 'cancelled')) {
 			return false;
 		}
 
@@ -8851,10 +8852,10 @@ order by staff_id, header_oder
 	public function validate_status_transition($current_status, $new_status)
 	{
 		$valid_transitions = [
-			'draft' => ['ready_for_review'],
-			'ready_for_review' => ['awaiting_approval', 'draft'],
-			'awaiting_approval' => ['submitted', 'ready_for_review'],
-			'submitted' => ['completed'],
+			'draft' => ['ready_for_review', 'cancelled'],
+			'ready_for_review' => ['awaiting_approval', 'draft', 'cancelled'],
+			'awaiting_approval' => ['submitted', 'ready_for_review', 'cancelled'],
+			'submitted' => ['completed', 'cancelled'],
 			'completed' => [], // Cannot transition from completed
 			'cancelled' => [], // Cannot transition from cancelled
 		];

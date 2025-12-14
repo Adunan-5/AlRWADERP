@@ -11,6 +11,7 @@ class Timesheet extends AdminController
         parent::__construct();
         require_once FCPATH . 'vendor/autoload.php';
         $this->load->model('timesheet_model');
+        $this->load->model('holidays_model');
         $this->load->helper('file');
     }
 
@@ -460,10 +461,35 @@ class Timesheet extends AdminController
                     $regular = 0;
                     $overtime = 0;
 
-                    if (!is_null($workedHours)) {
-                        $standard = (float)$staff->work_hours_per_day;
-                        $regular  = min($workedHours, $standard);
-                        $overtime = max(0, $workedHours - $standard);
+                    if (!is_null($workedHours) && $workedHours > 0) {
+                        // Check if it's Friday (day 5 in PHP, where Sunday = 0)
+                        $isFriday = (date('w', strtotime($workDate)) == 5);
+
+                        // Check if it's a holiday
+                        $isHoliday = $this->holidays_model->date_exists($workDate);
+
+                        // Debug logging
+                        log_message('debug', "Excel Import - Date: {$workDate}, Day: " . date('l', strtotime($workDate)) . ", Hours: {$workedHours}, isFriday: " . ($isFriday ? 'YES' : 'NO') . ", isHoliday: " . ($isHoliday ? 'YES' : 'NO'));
+
+                        // If Friday or Holiday, all hours go to overtime
+                        if ($isFriday || $isHoliday) {
+                            $regular = 0;
+                            $overtime = $workedHours;
+                            log_message('debug', "Excel Import - Friday/Holiday detected! Setting Regular=0, Overtime={$overtime}");
+                        } else {
+                            // Normal day: split based on work_hours_per_day
+                            $standard = (float)($staff->work_hours_per_day ?? 0);
+
+                            if ($standard > 0) {
+                                $regular  = min($workedHours, $standard);
+                                $overtime = max(0, $workedHours - $standard);
+                            } else {
+                                // If no standard hours set, all goes to regular
+                                $regular = $workedHours;
+                                $overtime = 0;
+                            }
+                            log_message('debug', "Excel Import - Normal day. Setting Regular={$regular}, Overtime={$overtime}");
+                        }
                     }
 
                     // Check existing
@@ -782,10 +808,30 @@ class Timesheet extends AdminController
                     $regular = 0;
                     $overtime = 0;
 
-                    if (!is_null($workedHours)) {
-                        $standard = (float)$staff->work_hours_per_day;
-                        $regular  = min($workedHours, $standard);
-                        $overtime = max(0, $workedHours - $standard);
+                    if (!is_null($workedHours) && $workedHours > 0) {
+                        // Check if it's Friday (day 5 in PHP, where Sunday = 0)
+                        $isFriday = (date('w', strtotime($workDate)) == 5);
+
+                        // Check if it's a holiday
+                        $isHoliday = $this->holidays_model->date_exists($workDate);
+
+                        // If Friday or Holiday, all hours go to overtime
+                        if ($isFriday || $isHoliday) {
+                            $regular = 0;
+                            $overtime = $workedHours;
+                        } else {
+                            // Normal day: split based on work_hours_per_day
+                            $standard = (float)($staff->work_hours_per_day ?? 0);
+
+                            if ($standard > 0) {
+                                $regular  = min($workedHours, $standard);
+                                $overtime = max(0, $workedHours - $standard);
+                            } else {
+                                // If no standard hours set, all goes to regular
+                                $regular = $workedHours;
+                                $overtime = 0;
+                            }
+                        }
                     }
 
                     $existingDetail = $this->db->get_where(db_prefix().'timesheet_details', [
@@ -1385,6 +1431,7 @@ class Timesheet extends AdminController
         $month = $this->input->get('month') ?: date('Y-m');
 
         $this->load->model('timesheet_model');
+        $this->load->model('holidays_model');
         $assignees = $this->timesheet_model->get_assignees_by_project($project_id);
 
         // build dates for the month
@@ -1394,12 +1441,20 @@ class Timesheet extends AdminController
             $dates[] = date('Y-m-d', strtotime(sprintf('%s-%02d', $month, $d)));
         }
 
+        // Get holidays for this month
+        $month_start = $month . '-01';
+        $month_end = date('Y-m-t', strtotime($month_start));
+        $holidays = $this->holidays_model->get_holidays_in_range($month_start, $month_end);
+        $holiday_dates = array_column($holidays, 'holiday_date');
+
         $out = [];
         foreach ($assignees as $a) {
             $ts = $this->timesheet_model->get_timesheet_for_staff_month($project_id, $a['staff_id'], $month);
             $out[] = [
                 'staff_id' => $a['staff_id'],
                 'full_name' => $a['full_name'] ?: ($a['firstname'].' '.$a['lastname']),
+                'iqama_number' => isset($a['iqama_number']) ? $a['iqama_number'] : '',
+                'work_hours_per_day' => isset($a['work_hours_per_day']) ? $a['work_hours_per_day'] : '',
                 // 'badge' => isset($a['badge']) ? $a['badge'] : '',
                 'master' => $ts['master'],
                 'details' => $ts['details']
@@ -1410,6 +1465,7 @@ class Timesheet extends AdminController
             'success' => true,
             'month' => $month,
             'dates' => $dates,
+            'holiday_dates' => $holiday_dates,
             'assignees' => $out
         ]);
         exit;
